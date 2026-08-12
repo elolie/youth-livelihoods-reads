@@ -127,15 +127,15 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text-1);font-
 .act:hover{background:var(--bg);color:var(--text-2)}
 .act.starred{color:var(--star)}
 .act.read-done{color:var(--lightblue)}
-.notes-label{font-size:11px;color:var(--text-3);font-weight:500;margin-top:8px;display:flex;align-items:center;gap:4px}
-.notes-panel{margin-top:6px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px}
-.notes-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.notes-toggle{font-size:11px;color:var(--text-3);cursor:pointer;background:none;border:none;padding:2px 0;margin-top:8px;display:inline-flex;align-items:center;gap:4px;font-family:var(--font-sans)}
+.notes-toggle:hover{color:var(--text-2)}
+.notes-list{display:flex;flex-direction:column;gap:8px;margin-top:8px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px}
+.notes-form-wrap{margin-top:8px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;display:flex;flex-direction:column;gap:6px}
 .note-item{font-size:12px;line-height:1.5;padding-bottom:8px;border-bottom:1px solid var(--border)}
 .note-item:last-child{border-bottom:none;padding-bottom:0}
 .note-author{font-weight:500;color:var(--text-1);margin-right:5px}
 .note-body{color:var(--text-2)}
 .notes-empty{font-size:12px;color:var(--text-3);font-style:italic;margin-bottom:10px}
-.notes-form{display:flex;flex-direction:column;gap:6px}
 .note-name,.note-text{font-family:var(--font-sans);font-size:12px;padding:6px 9px;border:1px solid var(--border-md);border-radius:var(--radius-sm);background:var(--surface);color:var(--text-1);outline:none;width:100%}
 .note-name:focus,.note-text:focus{border-color:var(--accent)}
 .note-text{resize:vertical;line-height:1.5}
@@ -585,8 +585,8 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text-1);font-
 
 <div class="about-section">
   <div class="about-label">About this repository</div>
-  <p>This is an internal knowledge monitoring space for the GenU team which helps the tracking of updated news, knowledge, and evidence in the youth livelihoods space.</p>
-  <p><strong>How it works going forward:</strong> The MERL team scans available sources and collects inputs from GenU colleagues to curate the monthly list, then the page will be updated accordingly. This is not a newsletter or a new product. It is a shared reading list of what GenU is tracking.</p>
+  <p>This is an internal knowledge monitoring space for the GenU team, helping to track updated news, knowledge, and evidence in the youth livelihoods space.</p>
+  <p><strong>How it works going forward:</strong> the MERL team scans available sources and collects inputs from GenU colleagues to curate the monthly list, then the page is updated accordingly. This is not a newsletter or a new product - it's a shared reading list of what GenU is tracking.</p>
 </div>
 
 <div class="stats-row" id="stats-row"></div>
@@ -645,6 +645,7 @@ try {
 }
 
 let allNotes = {};          // entryId -> array of {name, note, timestamp}
+const openNotesPanels = new Set();
 
 function initNotesSync(){
   if(!db) return;
@@ -664,6 +665,11 @@ function escapeHtml(str){
   const div = document.createElement('div');
   div.textContent = str || '';
   return div.innerHTML;
+}
+
+function toggleNotes(id){
+  openNotesPanels.has(id) ? openNotesPanels.delete(id) : openNotesPanels.add(id);
+  renderEntries();
 }
 
 function submitNote(id){
@@ -833,8 +839,9 @@ function renderEntries(){
                 <button class="act${isRead?' read-done':''}" onclick="toggleRead(${e.id})" title="${isRead?'Mark unread':'Mark as read'}">&#10003;</button>
               </div>
             </div>
-            <div class="notes-label">&#128466;&#65039; Add notes</div>
-            ${renderNotesPanel(e.id)}
+            <button class="notes-toggle" onclick="toggleNotes(${e.id})">&#128466;&#65039; Add notes</button>
+            ${renderNotesList(e.id)}
+            ${openNotesPanels.has(e.id) ? renderNotesForm(e.id) : ''}
           </div>
         </div>
       </div>`;
@@ -844,16 +851,18 @@ function renderEntries(){
   document.getElementById('entries-wrap').innerHTML=html;
 }
 
-function renderNotesPanel(id){
+function renderNotesList(id){
   const notes = allNotes[id] || [];
+  if(!notes.length) return '';
+  return `<div class="notes-list">${notes.map(n=>`<div class="note-item"><span class="note-author">${escapeHtml(n.name)}</span><span class="note-body">${escapeHtml(n.note)}</span></div>`).join('')}</div>`;
+}
+
+function renderNotesForm(id){
   const savedName = escapeHtml(localStorage.getItem('ylr-name') || '');
-  return `<div class="notes-panel">
-    <div class="notes-form">
-      <input type="text" class="note-name" id="note-name-${id}" placeholder="Your name" value="${savedName}">
-      <textarea class="note-text" id="note-text-${id}" placeholder="Add a note or takeaway..." rows="2"></textarea>
-      <button class="note-submit" onclick="submitNote(${id})">Post note</button>
-    </div>
-    ${notes.length ? `<div class="notes-list">${notes.map(n=>`<div class="note-item"><span class="note-author">${escapeHtml(n.name)}</span><span class="note-body">${escapeHtml(n.note)}</span></div>`).join('')}</div>` : ''}
+  return `<div class="notes-form-wrap">
+    <input type="text" class="note-name" id="note-name-${id}" placeholder="Your name" value="${savedName}">
+    <textarea class="note-text" id="note-text-${id}" placeholder="Add a note or takeaway..." rows="2"></textarea>
+    <button class="note-submit" onclick="submitNote(${id})">Post note</button>
   </div>`;
 }
 
