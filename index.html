@@ -8,6 +8,9 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔎</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<!-- Firebase (for shared, cross-visitor notes) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style>
 :root {
   --bg:        #F0F8FD;
@@ -51,6 +54,9 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text-1);font-
 .tab:hover{border-color:var(--accent);color:var(--accent)}
 .tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 .tab-new{font-size:10px;background:#E0F0FC;color:var(--lightblue);border-radius:10px;padding:1px 6px;margin-left:4px;vertical-align:1px}
+.tab-archive{font-family:var(--font-sans);font-size:12px;padding:6px 10px;border-radius:20px;border:1px solid var(--border-md);background:var(--surface);color:var(--text-2);cursor:pointer;appearance:none;-webkit-appearance:none}
+.tab-archive:hover{border-color:var(--accent);color:var(--accent)}
+.tab-archive.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 
 /* editorial */
 .editorial{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px 20px;margin-bottom:1.75rem;position:relative}
@@ -115,6 +121,7 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text-1);font-
 .tag-merl{background:#E0F0FC;color:#0054A1}
 .tag-country{background:#E0F0FC;color:#00AEEF}
 .tag-plain{background:#F1EFE8;color:#5F5E5A}
+.tag-referenced{background:#FDF6E3;color:#8A6A00}
 .card-actions{display:flex;gap:2px}
 .act{background:none;border:none;cursor:pointer;color:var(--text-3);padding:4px 5px;border-radius:var(--radius-sm);font-size:14px;line-height:1;transition:all 0.12s}
 .act:hover{background:var(--bg);color:var(--text-2)}
@@ -122,7 +129,20 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text-1);font-
 .act.read-done{color:var(--lightblue)}
 .notes-toggle{font-size:11px;color:var(--text-3);cursor:pointer;background:none;border:none;padding:2px 0;margin-top:8px;display:inline-flex;align-items:center;gap:4px;font-family:var(--font-sans)}
 .notes-toggle:hover{color:var(--text-2)}
-.notes-ta{width:100%;margin-top:6px;font-size:12px;font-family:var(--font-sans);background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;color:var(--text-1);resize:vertical;line-height:1.5}
+.notes-panel{margin-top:8px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px}
+.notes-list{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.note-item{font-size:12px;line-height:1.5;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.note-item:last-child{border-bottom:none;padding-bottom:0}
+.note-author{font-weight:500;color:var(--text-1);margin-right:5px}
+.note-body{color:var(--text-2)}
+.notes-empty{font-size:12px;color:var(--text-3);font-style:italic;margin-bottom:10px}
+.notes-form{display:flex;flex-direction:column;gap:6px}
+.note-name,.note-text{font-family:var(--font-sans);font-size:12px;padding:6px 9px;border:1px solid var(--border-md);border-radius:var(--radius-sm);background:var(--surface);color:var(--text-1);outline:none;width:100%}
+.note-name:focus,.note-text:focus{border-color:var(--accent)}
+.note-text{resize:vertical;line-height:1.5}
+.note-submit{align-self:flex-end;font-family:var(--font-sans);font-size:12px;padding:5px 12px;border-radius:var(--radius-sm);border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+.note-submit:hover{opacity:0.9}
+.note-submit:disabled{opacity:0.5;cursor:not-allowed}
 
 /* add form */
 .add-form{background:var(--surface);border:1px dashed var(--border-md);border-radius:var(--radius-lg);padding:18px 20px;margin-top:1.25rem}
@@ -160,30 +180,30 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text-1);font-
   TO ADD A NEW QUARTER:
   1. Add a new block inside "editions": { ... }
   2. Copy the Q1 structure, change the key (e.g. "Q2 2026")
-  3. Write the new editorial and add new entries
+  3. Add new entries
   4. Set "latest" to the new quarter key
   5. Old quarters stay untouched — they become archive tabs
 
   ENTRY FIELDS:
-    id        — unique number, keep incrementing
-    type      — flagship | trend | regional | policy | programme | merl
-    starred   — true = must-read
-    title     — full title
-    source    — "Organisation · Month Year"
-    url       — link or ""
-    excerpt   — 2-3 sentence key takeaway
-    genu      — one sentence: why should the GenU team care?
-    countries — array: ["Bangladesh","Global"]
-    themes    — array: ["NEET","AI","green jobs"]
+    id         — unique number, keep incrementing
+    type       — flagship | trend | regional | policy | programme | merl
+    starred    — true = must-read
+    referenced — true = this publication references/cites GenU (optional, default false)
+    title      — full title
+    source     — "Organisation · Month Year"
+    url        — link or ""
+    excerpt    — 2-3 sentence key takeaway
+    genu       — one sentence: why should the GenU team care?
+    countries  — array: ["Bangladesh","Global"]
+    themes     — array: ["NEET","AI","green jobs"]
 =================================================================
 -->
 
 <script id="pulse-data" type="application/json">
 {
-  "latest": "May 2026",
+  "latest": "August 2026",
   "editions": {
     "January 2026": {
-      "editorial": "Lorem ipsum",
       "entries": [
         {
           "id": 1,
@@ -242,7 +262,6 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text-1);font-
       ]
     },
     "February 2026": {
-      "editorial": "Lorem ipsum",
       "entries": [
         {
           "id": 5,
@@ -318,7 +337,6 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text-1);font-
       ]
     },
     "March 2026": {
-      "editorial": "Lorem ipsum",
       "entries": [
         {
           "id": 13,
@@ -356,7 +374,6 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text-1);font-
       ]
     },
     "April 2026": {
-      "editorial": "Lorem ipsum",
       "entries": [
         {
           "id": 3,
@@ -433,7 +450,6 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text-1);font-
       ]
     },
     "May 2026": {
-      "editorial": "Lorem ipsum",
       "entries": [
         {
           "id": 18,
@@ -474,6 +490,85 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text-1);font-
           ]
         }
       ]
+    },
+    "June 2026": {
+      "entries": [
+        {
+          "id": 20,
+          "type": "policy",
+          "starred": false,
+          "title": "Guidance for Policymakers on the Role of Domestic Carbon Pricing and International Carbon Credit Markets in Achieving LTSs and NDCs",
+          "source": "World Bank · May 2026",
+          "url": "https://openknowledge.worldbank.org/entities/publication/b406257d-ce1b-4809-8ce5-10d292366d3c?deliveryName=DM287151",
+          "excerpt": "New World Bank guidance for finance, planning, energy, and environment ministries on integrating domestic carbon pricing and international carbon credit markets into national climate planning. Introduces 'opportunity-cost pricing' so governments weigh the future value of keeping emissions reductions domestically, not just the cost of generating credits, plus stronger accounting and cross-ministry coordination to protect NDC integrity.",
+          "genu": "Carbon pricing and credit markets are becoming a real lever for green economy financing in our programme countries. Worth flagging for teams working on green jobs and NDC-linked programming as a reference on how the finance side is expected to work.",
+          "countries": [
+            "Global"
+          ],
+          "themes": [
+            "Sector Spotlight",
+            "Policy"
+          ]
+        },
+        {
+          "id": 21,
+          "type": "trend",
+          "starred": false,
+          "title": "When Risks Stack Up: Threats to Global Food Markets in 2026",
+          "source": "World Bank Blogs (Let's Talk Development) · June 2026",
+          "url": "https://blogs.worldbank.org/en/developmenttalk/when-risks-stack-up--threats-to-global-food-markets-in-2026",
+          "excerpt": "The World Bank's April 2026 Commodity Markets Outlook projects a modest 2.5% rise in global food prices this year, but flags the risks as firmly tilted upside: an emerging El Niño, higher fertilizer and energy costs following Middle East-related supply disruption, rising biofuel demand from higher blending mandates, and the risk of renewed export restrictions if prices spike.",
+          "genu": "Food price volatility hits household income and youth engagement in agriculture directly. Useful context for country teams on agri-livelihoods and green economy pathways, especially where a stronger El Niño could compound existing informality.",
+          "countries": [
+            "Global"
+          ],
+          "themes": [
+            "Sector Spotlight",
+            "Labour market"
+          ]
+        }
+      ]
+    },
+    "August 2026": {
+      "entries": [
+        {
+          "id": 22,
+          "type": "flagship",
+          "starred": true,
+          "title": "Global Employment Trends for Youth 2026",
+          "source": "ILO · August 2026",
+          "url": "https://www.ilo.org/publications/major-publications/global-employment-trends-youth-2026",
+          "excerpt": "Global youth unemployment rose to 12.4% in 2025, reversing the post-pandemic recovery, with 260 million young people classified as NEET. NEET rates in low-income countries reached 27.9%. High-income countries saw some of the steepest unemployment increases, partly linked to early AI-driven displacement in entry-level roles.",
+          "genu": "This is the flagship successor to the ILO Employment and Social Trends report we flagged back in January — use it as the updated NEET and youth unemployment baseline for the rest of 2026. The low-income NEET figure (27.9%) is a strong benchmark for our Sub-Saharan Africa and South Asia programme countries.",
+          "countries": [
+            "Global"
+          ],
+          "themes": [
+            "NEET",
+            "Labour market",
+            "Livelihoods and skill-to-work transition"
+          ]
+        },
+        {
+          "id": 23,
+          "type": "trend",
+          "starred": false,
+          "referenced": true,
+          "title": "Youth Employment in the Age of AI: Building an Inclusive and Future-Ready Ecosystem",
+          "source": "Save the Children · 2026",
+          "url": "https://resourcecentre.savethechildren.net/document/youth-employment-in-the-age-of-ai-building-an-inclusive-and-future-ready-ecosystem",
+          "excerpt": "Report from Save the Children's Skills to Succeed programme, drawing on a July 2025 convening of 100 leaders across 57 organisations, mapping a Collaborative Action Framework for youth employment in an AI-shaped workforce. Warns that young people from historically marginalised backgrounds face the greatest risk as AI disrupts entry-level roles in admin, retail, and basic tech support, while noting AI's potential to lower barriers to learning and self-employment.",
+          "genu": "A peer-organisation take on the same AI/entry-level jobs question we've been tracking since April — and it references GenU directly, so useful for partnership and positioning conversations.",
+          "countries": [
+            "Global"
+          ],
+          "themes": [
+            "Skilling",
+            "Sector Spotlight",
+            "NEET"
+          ]
+        }
+      ]
     }
   }
 }
@@ -491,13 +586,8 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text-1);font-
 
 <div class="about-section">
   <div class="about-label">About this repository</div>
-  <p>This is an internal knowledge monitoring space for the GenU team. This first prototype was built by the MERL team, who scanned key sources in youth livelihoods including ILO, World Bank, UNICEF, Mastercard Foundation, and others to curate the initial reading list. The interface was prototyped with Claude (Anthropic) and is published via GitHub Pages, currently stored in Hoai's personal GitHub account.</p>
-  <p><strong>How it works going forward:</strong> The MERL team scans available sources and collects inputs from GenU colleagues to curate the monthly list, then updates the code on GitHub to refresh the page. This is not a newsletter or a new product. It is a shared reading list of what GenU is tracking.</p>
-</div>
-
-<div class="editorial" id="editorial-block">
-  <div class="editorial-label">Editor's note · theme of the edition</div>
-  <div class="editorial-body" id="editorial-view"></div>
+  <p>This is an internal knowledge monitoring space for the GenU team which helps the tracking of updated news, knowledge, and evidence in the youth livelihoods space.</p>
+  <p><strong>How it works going forward:</strong> The MERL team scans available sources and collects inputs from GenU colleagues to curate the monthly list, then the page will be updated accordingly. This is not a newsletter or a new product. It is a shared reading list of what GenU is tracking.</p>
 </div>
 
 <div class="stats-row" id="stats-row"></div>
@@ -535,6 +625,73 @@ const DATA = JSON.parse(document.getElementById('pulse-data').textContent);
 const editionKeys = Object.keys(DATA.editions);
 let currentEdition = DATA.latest;
 
+/* ===== Firebase — shared notes =====
+   Fill these in from your Firebase project's console
+   (Project settings → General → Your apps → SDK setup and configuration).
+   Notes will not save until this is filled in. */
+const firebaseConfig = {
+  apiKey: "AIzaSyBWvGjvQsyzCuQ8uQ33SdMYqVn3BlSMcRM",
+  authDomain: "youth-livelihoods-reads.firebaseapp.com",
+  projectId: "youth-livelihoods-reads",
+  storageBucket: "youth-livelihoods-reads.firebasestorage.app",
+  messagingSenderId: "466449840696",
+  appId: "1:466449840696:web:ac3c428c80890dec5284cd"
+};
+let db = null;
+try {
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+} catch(err) {
+  console.warn('Firebase not configured yet — notes will not sync.', err);
+}
+
+let allNotes = {};          // entryId -> array of {name, note, timestamp}
+const openNotesPanels = new Set();
+
+function initNotesSync(){
+  if(!db) return;
+  db.collection('notes').orderBy('timestamp','asc').onSnapshot(snap => {
+    const grouped = {};
+    snap.forEach(doc => {
+      const d = doc.data();
+      if(!grouped[d.entryId]) grouped[d.entryId] = [];
+      grouped[d.entryId].push(d);
+    });
+    allNotes = grouped;
+    renderEntries();
+  }, err => console.error('Notes sync error:', err));
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str || '';
+  return div.innerHTML;
+}
+
+function toggleNotes(id){
+  openNotesPanels.has(id) ? openNotesPanels.delete(id) : openNotesPanels.add(id);
+  renderEntries();
+}
+
+function submitNote(id){
+  if(!db){ alert('Notes sync is not set up yet — ask the MERL team to finish the Firebase setup.'); return; }
+  const nameEl = document.getElementById('note-name-'+id);
+  const textEl = document.getElementById('note-text-'+id);
+  const name = nameEl.value.trim();
+  const note = textEl.value.trim();
+  if(!name || !note) return;
+  localStorage.setItem('ylr-name', name);
+  db.collection('notes').add({
+    entryId: id,
+    name: name,
+    note: note,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  }).then(()=>{ textEl.value=''; }).catch(err=>{
+    console.error('Failed to post note:', err);
+    alert('Could not post note — check your connection and try again.');
+  });
+}
+
 const SECTIONS = [
   {id:'flagship',  label:'Flagship reports & global data'},
   {id:'trend',     label:'Trends & think pieces'},
@@ -555,7 +712,7 @@ const TYPE_META = {
 /* per-edition runtime state */
 const state = {};
 editionKeys.forEach(k => {
-  state[k] = { fTypes: new Set(), fCountries: new Set(), fThemes: new Set(), fStarred: false, fUnread: false, reads: {} };
+  state[k] = { fTypes: new Set(), fCountries: new Set(), fThemes: new Set(), fStarred: false, fUnread: false, fReferenced: false, reads: {} };
 });
 
 function S(){ return state[currentEdition]; }
@@ -572,13 +729,14 @@ function filtered(){
     if(s.fThemes.size    && !e.themes.some(t=>s.fThemes.has(t)))         return false;
     if(s.fStarred && !e.starred)  return false;
     if(s.fUnread  &&  s.reads[e.id]) return false;
+    if(s.fReferenced && !e.referenced) return false;
     return true;
   });
 }
 
 function clearFilters(){
   const s=S(); s.fTypes.clear(); s.fCountries.clear(); s.fThemes.clear();
-  s.fStarred=false; s.fUnread=false; render();
+  s.fStarred=false; s.fUnread=false; s.fReferenced=false; render();
 }
 function toggle(setName, val){
   const s=S(); const set=s[setName];
@@ -586,26 +744,36 @@ function toggle(setName, val){
 }
 function toggleStarred(){ S().fStarred=!S().fStarred; render(); }
 function toggleUnread(){   S().fUnread=!S().fUnread;   render(); }
+function toggleReferenced(){ S().fReferenced=!S().fReferenced; render(); }
 function toggleRead(id){
   const r=S().reads; r[id]=!r[id]; render();
 }
 
-/* tabs */
+/* tabs — show the most recent editions as buttons, fold older ones into an archive dropdown */
+const VISIBLE_TABS = 4;
 function renderTabs(){
-  document.getElementById('edition-tabs').innerHTML = editionKeys.map((k,i) => {
+  const recent  = editionKeys.slice(-VISIBLE_TABS);
+  const archive = editionKeys.slice(0, -VISIBLE_TABS);
+
+  let html = recent.map(k => {
     const isLatest = k === DATA.latest;
     const isActive = k === currentEdition;
     return `<button class="tab${isActive?' active':''}" onclick="switchEdition('${k}')">
       ${k}${isLatest?'<span class="tab-new">latest</span>':''}
     </button>`;
   }).join('');
+
+  if(archive.length){
+    const archiveActive = archive.includes(currentEdition);
+    html += `<select class="tab-archive${archiveActive?' active':''}" onchange="switchEdition(this.value)">
+      <option value="" ${archiveActive?'':'selected'} disabled>Archive ▾</option>
+      ${archive.slice().reverse().map(k=>`<option value="${k}"${k===currentEdition?' selected':''}>${k}</option>`).join('')}
+    </select>`;
+  }
+
+  document.getElementById('edition-tabs').innerHTML = html;
 }
 function switchEdition(k){ currentEdition=k; render(); }
-
-/* editorial */
-function renderEditorial(){
-  document.getElementById('editorial-view').textContent = DATA.editions[currentEdition].editorial;
-}
 
 /* stats */
 function renderStats(){
@@ -626,7 +794,8 @@ function renderChips(){
   document.getElementById('type-chips').innerHTML =
     Object.keys(TYPE_META).map(k=>`<button class="chip${s.fTypes.has(k)?' on-type':''}" onclick="toggle('fTypes','${k}')">${TYPE_META[k].label}</button>`).join('')
     +`<button class="chip${s.fStarred?' on-special':''}" onclick="toggleStarred()">Must-reads only</button>`
-    +`<button class="chip${s.fUnread?' on-special':''}" onclick="toggleUnread()">Unread only</button>`;
+    +`<button class="chip${s.fUnread?' on-special':''}" onclick="toggleUnread()">Unread only</button>`
+    +`<button class="chip${s.fReferenced?' on-special':''}" onclick="toggleReferenced()">References GenU</button>`;
 
   const REGIONS = ['Global','East Asia & Pacific','Europe & Central Asia','Latin America & Caribbean','Middle East & North Africa','North America','South Asia','Sub-Saharan Africa'];
   document.getElementById('country-chips').innerHTML =
@@ -662,6 +831,7 @@ function renderEntries(){
             <div class="card-footer">
               <div class="tags">
                 <span class="tag ${tm.tag}">${tm.label}</span>
+                ${e.referenced?'<span class="tag tag-referenced">References GenU</span>':''}
                 ${e.countries.map(c=>`<span class="tag tag-country">${c}</span>`).join('')}
                 ${e.themes.slice(0,3).map(t=>`<span class="tag tag-plain">${t}</span>`).join('')}
                 ${e.themes.length>3?`<span class="tag tag-plain">+${e.themes.length-3} more</span>`:''}
@@ -670,8 +840,8 @@ function renderEntries(){
                 <button class="act${isRead?' read-done':''}" onclick="toggleRead(${e.id})" title="${isRead?'Mark unread':'Mark as read'}">&#10003;</button>
               </div>
             </div>
-            <button class="notes-toggle" onclick="toggleNotes(${e.id})">&#9998; ${document.getElementById('nt'+e.id)&&document.getElementById('nt'+e.id).value?'View notes':'Add notes'}</button>
-            <textarea class="notes-ta" id="nt${e.id}" style="display:none" placeholder="Your annotations or key takeaways..." rows="2"></textarea>
+            <button class="notes-toggle" onclick="toggleNotes(${e.id})">&#128172; Notes${(allNotes[e.id]||[]).length?` (${(allNotes[e.id]||[]).length})`:''}</button>
+            ${openNotesPanels.has(e.id) ? renderNotesPanel(e.id) : ''}
           </div>
         </div>
       </div>`;
@@ -681,9 +851,19 @@ function renderEntries(){
   document.getElementById('entries-wrap').innerHTML=html;
 }
 
-function toggleNotes(id){
-  const el=document.getElementById('nt'+id);
-  if(el) el.style.display=el.style.display==='none'?'block':'none';
+function renderNotesPanel(id){
+  const notes = allNotes[id] || [];
+  const savedName = escapeHtml(localStorage.getItem('ylr-name') || '');
+  return `<div class="notes-panel">
+    <div class="notes-list">
+      ${notes.length ? notes.map(n=>`<div class="note-item"><span class="note-author">${escapeHtml(n.name)}</span><span class="note-body">${escapeHtml(n.note)}</span></div>`).join('') : '<div class="notes-empty">No notes yet — be the first to add one.</div>'}
+    </div>
+    <div class="notes-form">
+      <input type="text" class="note-name" id="note-name-${id}" placeholder="Your name" value="${savedName}">
+      <textarea class="note-text" id="note-text-${id}" placeholder="Add a note or takeaway..." rows="2"></textarea>
+      <button class="note-submit" onclick="submitNote(${id})">Post note</button>
+    </div>
+  </div>`;
 }
 
 
@@ -691,13 +871,13 @@ function toggleNotes(id){
 
 function render(){
   renderTabs();
-  renderEditorial();
   renderStats();
   renderChips();
   renderEntries();
 }
 
 render();
+initNotesSync();
 </script>
 </body>
 </html>
