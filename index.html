@@ -192,7 +192,8 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text-1);font-
     source     — "Organisation · Month Year"
     url        — link or ""
     excerpt    — 2-3 sentence key takeaway
-    genu       — one sentence: why should the GenU team care?
+    genu       — one or two sentences: why it matters for youth livelihoods work
+                 (shown on the card as "Implications")
     countries  — array: ["Bangladesh","Global"]
     themes     — array: ["NEET","AI","green jobs"]
 =================================================================
@@ -525,7 +526,8 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text-1);font-
             "Sector Spotlight",
             "Labour market"
           ]
-        },         {
+        },
+        {
           "id": 24,
           "type": "flagship",
           "starred": true,
@@ -602,7 +604,7 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text-1);font-
             "Sector Spotlight",
             "NEET"
           ]
-              }
+        }
       ]
     },
     "September 2026": {
@@ -645,7 +647,8 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text-1);font-
             "Skilling",
             "Livelihoods and skill-to-work transition"
           ]
-        },         {
+        },
+        {
           "id": 28,
           "type": "trend",
           "starred": false,
@@ -658,9 +661,28 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text-1);font-
             "Global"
           ],
           "themes": [
-             "Labour market",
+            "Labour market",
             "Skilling",
             "Livelihoods and skill-to-work transition"
+          ]
+        },
+        {
+          "id": 29,
+          "type": "programme",
+          "starred": false,
+          "title": "Breaking Down Barriers to Youth Employment",
+          "source": "ADB Southeast Asia Development Solutions (SEADS) · August 2025",
+          "url": "https://seads.adb.org/articles/breaking-down-barriers-youth-employment",
+          "excerpt": "Profile of JobStart Philippines, an ADB-supported programme run since 2014 through local public employment service offices (PESOs) for NEET youth aged 18-24. It combines career coaching, a 10-day life skills training with a daily allowance, technical training and paid internships, with training and internship costs subsidised to lower employers' cost of hiring inexperienced young people. A 2016 law funded nationwide rollout, and a digital platform built during COVID-19 extended reach to remote and poorer areas. The youth NEET share has since fallen from 25.2% (April 2020) to 11% (April 2024), though youth unemployment (10.5%) and underemployment (13.8%) remain high.",
+          "genu": "A clear example of a programme moving from donor-supported pilot to legislated, state-funded national scale, delivered through existing public employment services rather than a parallel structure. The employer-side subsidy and the digital platform for reaching remote areas are useful reference points for teams designing school-to-work transition and employer engagement models.",
+          "countries": [
+            "East Asia & Pacific"
+          ],
+          "themes": [
+            "NEET",
+            "Livelihoods and skill-to-work transition",
+            "Skilling",
+            "Policy"
           ]
         }
       ]
@@ -922,7 +944,7 @@ function renderEntries(){
             </div>
             <div class="card-source">${e.source}</div>
             ${e.excerpt?`<div class="card-excerpt">${e.excerpt}</div>`:''}
-            ${e.genu?`<div class="genu-block"><div class="genu-label">GenU relevance</div><div class="genu-text">${e.genu}</div></div>`:''}
+            ${e.genu?`<div class="genu-block"><div class="genu-label">Implications</div><div class="genu-text">${e.genu}</div></div>`:''}
             <div class="card-footer">
               <div class="tags">
                 <span class="tag ${tm.tag}">${tm.label}</span>
